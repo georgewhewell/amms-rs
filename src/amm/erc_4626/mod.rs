@@ -56,6 +56,10 @@ pub struct ERC4626Vault {
 
 #[async_trait]
 impl AutomatedMarketMaker for ERC4626Vault {
+    fn fee(&self) -> u32 {
+        self.deposit_fee
+    }
+
     fn address(&self) -> H160 {
         self.vault_token
     }

@@ -121,6 +121,10 @@ impl Info {
 
 #[async_trait]
 impl AutomatedMarketMaker for UniswapV3Pool {
+    fn fee(&self) -> u32 {
+        self.fee
+    }
+
     fn address(&self) -> H160 {
         self.address
     }

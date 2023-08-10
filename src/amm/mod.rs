@@ -19,6 +19,7 @@ use self::{erc_4626::ERC4626Vault, uniswap_v2::UniswapV2Pool, uniswap_v3::Uniswa
 #[async_trait]
 pub trait AutomatedMarketMaker {
     fn creation_block(&self) -> Option<u64>;
+    fn fee(&self) -> u32;
     fn address(&self) -> H160;
     async fn sync<M: Middleware>(&mut self, middleware: Arc<M>) -> Result<(), AMMError<M>>;
     fn sync_on_event_signatures(&self) -> Vec<H256>;
@@ -49,6 +50,14 @@ pub enum AMM {
 
 #[async_trait]
 impl AutomatedMarketMaker for AMM {
+    fn fee(&self) -> u32 {
+        match self {
+            AMM::UniswapV2Pool(pool) => pool.fee(),
+            AMM::UniswapV3Pool(pool) => pool.fee(),
+            AMM::ERC4626Vault(vault) => vault.fee(),
+        }
+    }
+
     fn address(&self) -> H160 {
         match self {
             AMM::UniswapV2Pool(pool) => pool.address,
