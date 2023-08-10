@@ -10,9 +10,8 @@ use crate::{
     errors::AMMError,
 };
 
-use ethers::prelude::abigen;
-
 use super::UniswapV2Pool;
+use ethers::prelude::abigen;
 
 abigen!(
 

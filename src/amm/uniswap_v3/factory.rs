@@ -10,6 +10,7 @@ use ethers::{
     providers::Middleware,
     types::{BlockNumber, Filter, Log, H160, H256, U256, U64},
 };
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::task::JoinHandle;
 
@@ -85,7 +86,8 @@ impl AutomatedMarketMakerFactory for UniswapV3Factory {
         step: u64,
     ) -> Result<Vec<AMM>, AMMError<M>> {
         if let Some(block) = to_block {
-            self.get_all_pools_from_logs(block, step, middleware).await
+            self.get_all_pools_from_logs(self.creation_block, block, step, middleware)
+                .await
         } else {
             return Err(AMMError::BlockNumberNotFound);
         }
@@ -146,6 +148,36 @@ impl UniswapV3Factory {
 
     //Function to get all pair created events for a given Dex factory address and sync pool data
     pub async fn get_all_pools_from_logs<M: 'static + Middleware>(
+        self,
+        from_block: u64,
+        target_block: u64,
+        step: u64,
+        middleware: Arc<M>,
+    ) -> Result<Vec<AMM>, AMMError<M>> {
+        let mut aggregated_amms: HashMap<H160, AMM> = HashMap::new();
+        let filter = &Filter::new()
+            .address(self.address)
+            .topic0(vec![POOL_CREATED_EVENT_SIGNATURE])
+            .from_block(BlockNumber::Number(U64([from_block])))
+            .to_block(BlockNumber::Number(U64([target_block])));
+        let mut query = middleware.get_logs_paginated(&filter, step);
+        while let Some(Ok(log)) = query.next().await {
+            if log.address == self.address {
+                let mut new_pool = self.new_empty_amm_from_log(log)?;
+                if let AMM::UniswapV3Pool(ref mut pool) = new_pool {
+                    // pool.tick_spacing = pool.get_tick_spacing(middleware.clone()).await?;
+                    pool.populate_data(Some(target_block), middleware.clone())
+                        .await?;
+                }
+                aggregated_amms.insert(new_pool.address(), new_pool);
+            }
+        }
+
+        Ok(aggregated_amms.into_values().collect())
+    }
+
+    //Function to get all pair created events for a given Dex factory address and sync pool data
+    pub async fn get_all_pools_from_logs_with_sync<M: 'static + Middleware>(
         self,
         to_block: u64,
         step: u64,

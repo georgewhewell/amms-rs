@@ -18,6 +18,7 @@ use ethers::{
     providers::Middleware,
     types::{BlockNumber, Filter, Log, H160, H256, I256, U256, U64},
 };
+use futures::StreamExt;
 use num_bigfloat::BigFloat;
 use serde::{Deserialize, Serialize};
 
@@ -122,6 +123,10 @@ impl Info {
 impl AutomatedMarketMaker for UniswapV3Pool {
     fn address(&self) -> H160 {
         self.address
+    }
+
+    fn creation_block(&self) -> Option<u64> {
+        Some(self.creation_block)
     }
 
     async fn sync<M: Middleware>(&mut self, middleware: Arc<M>) -> Result<(), AMMError<M>> {
@@ -611,16 +616,20 @@ impl UniswapV3Pool {
             }
 
             handles.push(tokio::spawn(async move {
-                let logs = middleware
-                    .get_logs(
-                        &Filter::new()
-                            .topic0(vec![BURN_EVENT_SIGNATURE, MINT_EVENT_SIGNATURE])
-                            .address(pool_address)
-                            .from_block(BlockNumber::Number(U64([from_block])))
-                            .to_block(BlockNumber::Number(U64([target_block]))),
-                    )
-                    .await
-                    .map_err(AMMError::MiddlewareError)?;
+                let mut qry = middleware.get_logs_paginated(
+                    &Filter::new()
+                        .topic0(vec![BURN_EVENT_SIGNATURE, MINT_EVENT_SIGNATURE])
+                        .address(pool_address)
+                        .from_block(BlockNumber::Number(U64([from_block])))
+                        .to_block(BlockNumber::Number(U64([target_block]))),
+                    500,
+                );
+                let mut logs = vec![];
+                while let Some(Ok(log)) = qry.next().await {
+                    logs.push(log);
+                    // let logs = stream.map_err(AMMError::MiddlewareError).await?;
+                }
+                // return Ok::<Vec<Log>, AMMError<M>>(logs);
 
                 Ok::<Vec<Log>, AMMError<M>>(logs)
             }));

@@ -1,5 +1,5 @@
 use ethers::prelude::{AbiError, ContractError};
-use ethers::providers::{Middleware, ProviderError};
+use ethers::providers::{LogQueryError, Middleware, ProviderError};
 use ethers::types::{H160, U256};
 use std::time::SystemTimeError;
 use thiserror::Error;
@@ -59,6 +59,8 @@ where
     BatchRequestError(H160),
     #[error("Checkpoint error")]
     CheckpointError(#[from] CheckpointError),
+    #[error("Log Query error")]
+    LogQueryError(#[from] LogQueryError<ProviderError>),
 }
 
 #[derive(Error, Debug)]

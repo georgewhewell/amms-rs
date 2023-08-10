@@ -63,6 +63,10 @@ impl AutomatedMarketMaker for UniswapV2Pool {
         self.address
     }
 
+    fn creation_block(&self) -> Option<u64> {
+        None
+    }
+
     async fn sync<M: Middleware>(&mut self, middleware: Arc<M>) -> Result<(), AMMError<M>> {
         (self.reserve_0, self.reserve_1) = self.get_reserves(middleware).await?;
 

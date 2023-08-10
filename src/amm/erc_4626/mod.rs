@@ -60,6 +60,10 @@ impl AutomatedMarketMaker for ERC4626Vault {
         self.vault_token
     }
 
+    fn creation_block(&self) -> Option<u64> {
+        None
+    }
+
     fn tokens(&self) -> Vec<H160> {
         vec![self.vault_token, self.asset_token]
     }
